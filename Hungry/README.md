@@ -442,7 +442,7 @@ This project is licensed under the **ISC License**.
 
 ## 👨‍💻 Author
 
-**Virtual Code**
+**Darshan Hanwate**
 
 ---
 
