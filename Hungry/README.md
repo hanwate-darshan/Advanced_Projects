@@ -260,10 +260,10 @@ HF_MODEL=your-model-name
 HF_API_KEY=hf_xxxxxxxxxxxxxxxxxxxx
 
 # Admin Credentials (auto-seeded on first run)
-ADMIN_FULLNAME=Admin
-ADMIN_EMAIL=admin@hungry.com
-ADMIN_PASSWORD=admin123
-ADMIN_MOBILE=9999999999
+ADMIN_FULLNAME=
+ADMIN_EMAIL=
+ADMIN_PASSWORD=
+ADMIN_MOBILE=
 ```
 
 Start the backend server:
