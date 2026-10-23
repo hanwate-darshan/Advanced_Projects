@@ -2,10 +2,10 @@ import axios from 'axios'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { serverUrl } from '../App'
-import { FaLocationDot, FaBoxOpen, FaStar } from "react-icons/fa6"
+import { FaLocationDot, FaBoxOpen, FaStar, FaCircleCheck } from "react-icons/fa6"
 
 const statusClass = (status) => {
-    const s = (status || "").toLowerCase()
+    const s = (status || "").toLowerCase().trim()
     if (s === "pending") return "status-pending"
     if (s === "preparing") return "status-preparing"
     if (s === "out of delivery") return "status-outofdelivery"
@@ -17,7 +17,8 @@ function UserOrderCard({ data, index = 0 }) {
     const navigate = useNavigate()
     const [selectedRating, setSelectedRating] = useState({})//itemId:rating
     const shopOrdersList = Array.isArray(data.shopOrders) ? data.shopOrders : (data.shopOrders ? [data.shopOrders] : [])
-    const firstStatus = shopOrdersList[0]?.status || "pending"
+    const allDelivered = shopOrdersList.length > 0 && shopOrdersList.every(so => (so.status || "").toLowerCase().trim() === "delivered")
+    const firstStatus = (shopOrdersList[0]?.status || "pending").toLowerCase().trim()
 
     const formatDate = (dateString) => {
         const date = new Date(dateString)
@@ -82,7 +83,7 @@ function UserOrderCard({ data, index = 0 }) {
                                 <p className='text-sm font-bold mt-1.5 text-blinkit-text truncate' title={item.name}>{item.name}</p>
                                 <p className='text-xs text-blinkit-text-muted font-medium tabular-nums'>Qty {item.quantity} × ₹{item.price} = <span className='text-blinkit-green font-bold'>₹{item.price * item.quantity}</span></p>
 
-                                {shopOrder.status == "delivered" && (
+                                {(shopOrder.status || "").toLowerCase().trim() === "delivered" && (
                                     <div className='flex items-center gap-0.5 mt-2.5'>
                                         <FaStar size={10} className='text-blinkit-text-muted mr-1' />
                                         {[1, 2, 3, 4, 5].map((star) => (
@@ -109,10 +110,25 @@ function UserOrderCard({ data, index = 0 }) {
 
             <div className='flex flex-wrap justify-between items-center gap-3 border-t border-blinkit-border-light pt-3'>
                 <p className='font-extrabold text-lg text-blinkit-text tracking-tight tabular-nums'>Total ₹{data.totalAmount}</p>
-                <button className='btn btn-primary !px-5 !py-2.5 text-sm' onClick={() => navigate(`/track-order/${data._id}`)}>
-                    <FaLocationDot size={14} />
-                    Track Order
-                </button>
+                {allDelivered ? (
+                    <div className='flex items-center gap-2.5'>
+                        <span className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200'>
+                            <FaCircleCheck size={13} className='text-green-600' />
+                            Delivered
+                        </span>
+                        <button
+                            className='btn bg-white border border-blinkit-border-light text-blinkit-text-secondary hover:text-blinkit-text hover:bg-blinkit-bg !px-3.5 !py-1.5 text-xs font-semibold shadow-soft'
+                            onClick={() => navigate(`/track-order/${data._id}`)}
+                        >
+                            Order Details
+                        </button>
+                    </div>
+                ) : (
+                    <button className='btn btn-primary !px-5 !py-2.5 text-sm' onClick={() => navigate(`/track-order/${data._id}`)}>
+                        <FaLocationDot size={14} />
+                        Track Order
+                    </button>
+                )}
             </div>
         </div>
     )

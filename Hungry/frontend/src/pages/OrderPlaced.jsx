@@ -1,13 +1,19 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { FaCircleCheck, FaBurger, FaClock, FaBoxOpen, FaLocationDot } from "react-icons/fa6";
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { clearCart } from '../redux/userSlice';
 
 function OrderPlaced() {
     const navigate = useNavigate()
     const location = useLocation()
+    const dispatch = useDispatch()
     const { myOrders } = useSelector(state => state.user)
     const targetOrderId = location.state?.orderId || myOrders?.[0]?._id
+
+    useEffect(() => {
+        dispatch(clearCart())
+    }, [dispatch])
   return (
     <div className='min-h-screen bg-blinkit-bg flex flex-col justify-center items-center px-4 text-center relative overflow-hidden'>
       <div className='absolute top-0 left-1/2 -translate-x-1/2 w-[560px] h-[280px] bg-blinkit-green/10 blur-3xl rounded-full pointer-events-none' />

@@ -20,8 +20,14 @@ import {
   FaEye,
   FaCircleExclamation,
   FaRotateRight,
-  FaCoins
+  FaCoins,
+  FaPlus,
+  FaTrash,
+  FaArrowLeft,
+  FaLeaf,
+  FaWandMagicSparkles
 } from 'react-icons/fa6';
+import { categories } from '../category';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -55,10 +61,23 @@ export default function AdminDashboard() {
   const [riders, setRiders] = useState([]);
   const [approvalsLoading, setApprovalsLoading] = useState(false);
 
-  // Restaurants State
+  // Restaurants & Menus State
   const [restaurants, setRestaurants] = useState([]);
   const [selectedShop, setSelectedShop] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
+  const [loadingMenu, setLoadingMenu] = useState(false);
+  const [restaurantSearch, setRestaurantSearch] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addingItem, setAddingItem] = useState(false);
+  const [newItemForm, setNewItemForm] = useState({
+    name: '',
+    category: 'Snacks',
+    price: '',
+    foodType: 'veg',
+    description: '',
+    image: null
+  });
+  const [generatingDesc, setGeneratingDesc] = useState(false);
 
   // Live Radar State
   const [liveDeliveries, setLiveDeliveries] = useState({ activeOrders: [], activeRiders: [] });
@@ -111,8 +130,10 @@ export default function AdminDashboard() {
         axios.get(`${serverUrl}/api/admin/owners`, { params: { approvalStatus: 'pending' }, withCredentials: true }),
         axios.get(`${serverUrl}/api/admin/riders`, { params: { approvalStatus: 'pending' }, withCredentials: true })
       ]);
-      setOwners(ownersRes.data?.data?.owners || []);
-      setRiders(ridersRes.data?.data?.riders || []);
+      const ownersList = ownersRes.data?.data?.owners || (Array.isArray(ownersRes.data?.data) ? ownersRes.data.data : ownersRes.data?.owners || []);
+      const ridersList = ridersRes.data?.data?.riders || (Array.isArray(ridersRes.data?.data) ? ridersRes.data.data : ridersRes.data?.riders || []);
+      setOwners(ownersList);
+      setRiders(ridersList);
     } catch (e) {
       console.error(e);
     } finally {
@@ -123,7 +144,8 @@ export default function AdminDashboard() {
   const fetchRestaurants = async () => {
     try {
       const res = await axios.get(`${serverUrl}/api/admin/restaurants`, { withCredentials: true });
-      setRestaurants(res.data?.data?.restaurants || []);
+      const list = res.data?.data?.restaurants || (Array.isArray(res.data?.data) ? res.data.data : res.data?.restaurants || []);
+      setRestaurants(list);
     } catch (e) {
       console.error(e);
     }
@@ -143,7 +165,8 @@ export default function AdminDashboard() {
   const fetchOrders = async () => {
     try {
       const res = await axios.get(`${serverUrl}/api/admin/orders`, { withCredentials: true });
-      setOrders(res.data?.data?.orders || []);
+      const list = res.data?.data?.orders || (Array.isArray(res.data?.data) ? res.data.data : res.data?.orders || []);
+      setOrders(list);
     } catch (e) {
       console.error(e);
     }
@@ -162,7 +185,7 @@ export default function AdminDashboard() {
 
   const handleApproveOwner = async (ownerId, action) => {
     try {
-      await axios.patch(`${serverUrl}/api/admin/owners/${ownerId}/approve`, { action }, { withCredentials: true });
+      await axios.patch(`${serverUrl}/api/admin/owners/${ownerId}/approval`, { approvalStatus: action }, { withCredentials: true });
       fetchApprovals();
       fetchStats();
     } catch (e) {
@@ -172,7 +195,7 @@ export default function AdminDashboard() {
 
   const handleApproveRider = async (riderId, action) => {
     try {
-      await axios.patch(`${serverUrl}/api/admin/riders/${riderId}/approve`, { action }, { withCredentials: true });
+      await axios.patch(`${serverUrl}/api/admin/riders/${riderId}/approval`, { approvalStatus: action }, { withCredentials: true });
       fetchApprovals();
       fetchStats();
     } catch (e) {
@@ -188,6 +211,107 @@ export default function AdminDashboard() {
       fetchStats();
     } catch (e) {
       alert('Error updating shop status');
+    }
+  };
+
+  const fetchMenuItems = async (shopId) => {
+    try {
+      setLoadingMenu(true);
+      const res = await axios.get(`${serverUrl}/api/admin/restaurants/${shopId}/items`, { withCredentials: true });
+      const items = res.data?.data || res.data?.items || (Array.isArray(res.data) ? res.data : []);
+      setMenuItems(items);
+    } catch (e) {
+      console.error('Failed to load menu items:', e);
+      setMenuItems([]);
+    } finally {
+      setLoadingMenu(false);
+    }
+  };
+
+  const handleSelectShop = (shop) => {
+    setSelectedShop(shop);
+    fetchMenuItems(shop._id);
+  };
+
+  const handleToggleItemAvailable = async (itemId, currentVal) => {
+    try {
+      await axios.patch(`${serverUrl}/api/admin/items/${itemId}/status`, { isAvailable: !currentVal }, { withCredentials: true });
+      if (selectedShop) fetchMenuItems(selectedShop._id);
+    } catch (e) {
+      alert('Error updating item availability');
+    }
+  };
+
+  const handleToggleItemApproved = async (itemId, currentVal) => {
+    try {
+      await axios.patch(`${serverUrl}/api/admin/items/${itemId}/status`, { isApproved: !currentVal }, { withCredentials: true });
+      if (selectedShop) fetchMenuItems(selectedShop._id);
+    } catch (e) {
+      alert('Error updating item approval');
+    }
+  };
+
+  const handleDeleteItem = async (itemId) => {
+    if (!window.confirm('Are you sure you want to delete this menu item?')) return;
+    try {
+      await axios.delete(`${serverUrl}/api/admin/items/${itemId}`, { withCredentials: true });
+      if (selectedShop) fetchMenuItems(selectedShop._id);
+    } catch (e) {
+      alert('Error deleting item');
+    }
+  };
+
+  const handleAddItem = async (e) => {
+    e.preventDefault();
+    if (!selectedShop) return;
+    try {
+      setAddingItem(true);
+      const formData = new FormData();
+      formData.append('name', newItemForm.name);
+      formData.append('category', newItemForm.category);
+      formData.append('price', newItemForm.price);
+      formData.append('foodType', newItemForm.foodType);
+      formData.append('description', newItemForm.description);
+      if (newItemForm.image) {
+        formData.append('image', newItemForm.image);
+      }
+      await axios.post(`${serverUrl}/api/admin/restaurants/${selectedShop._id}/items`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true
+      });
+      setShowAddModal(false);
+      setNewItemForm({ name: '', category: 'Snacks', price: '', foodType: 'veg', description: '', image: null });
+      fetchMenuItems(selectedShop._id);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to add item');
+    } finally {
+      setAddingItem(false);
+    }
+  };
+
+  const handleGenerateAiDesc = async () => {
+    if (!newItemForm.name?.trim()) {
+      alert('Please enter an item name first so AI can write a description!');
+      return;
+    }
+    try {
+      setGeneratingDesc(true);
+      const res = await axios.post(
+        `${serverUrl}/api/recommendations/generate-description`,
+        {
+          name: newItemForm.name,
+          category: newItemForm.category,
+          foodType: newItemForm.foodType
+        },
+        { withCredentials: true }
+      );
+      if (res.data?.description) {
+        setNewItemForm(prev => ({ ...prev, description: res.data.description }));
+      }
+    } catch (e) {
+      alert('Failed to generate description with AI');
+    } finally {
+      setGeneratingDesc(false);
     }
   };
 
@@ -507,49 +631,367 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ================= TAB 3: RESTAURANTS ================= */}
+        {/* ================= TAB 3: RESTAURANTS & MENU MANAGEMENT ================= */}
         {activeTab === 'restaurants' && (
           <div className='w-full card !rounded-3xl p-6 bg-white border border-blinkit-border shadow-card animate-fade-up'>
-            <div className='flex items-center justify-between pb-4 border-b border-blinkit-border-light mb-4'>
-              <div>
-                <h3 className='font-display text-lg font-bold text-blinkit-text'>Registered Restaurants</h3>
-                <p className='text-xs text-blinkit-text-muted'>Manage restaurant statuses, commissions, and menus</p>
-              </div>
-            </div>
+            {!selectedShop ? (
+              <>
+                <div className='flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-blinkit-border-light mb-4 gap-3'>
+                  <div>
+                    <h3 className='font-display text-lg font-bold text-blinkit-text'>Registered Restaurants ({restaurants.length})</h3>
+                    <p className='text-xs text-blinkit-text-muted'>Manage restaurant statuses, commissions, and full menu items</p>
+                  </div>
+                  <div className='w-full sm:w-64'>
+                    <input
+                      type='text'
+                      placeholder='Search by name or city...'
+                      value={restaurantSearch}
+                      onChange={e => setRestaurantSearch(e.target.value)}
+                      className='w-full px-3 py-1.5 rounded-xl border border-blinkit-border bg-blinkit-bg text-xs outline-0 focus:border-blinkit-green'
+                    />
+                  </div>
+                </div>
 
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              {restaurants.map(shop => (
-                <div key={shop._id} className='p-4 rounded-2xl border border-blinkit-border bg-blinkit-bg/40 flex items-center justify-between gap-3'>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                  {restaurants
+                    .filter(shop =>
+                      shop.name?.toLowerCase().includes(restaurantSearch.toLowerCase()) ||
+                      shop.city?.toLowerCase().includes(restaurantSearch.toLowerCase())
+                    )
+                    .map(shop => (
+                      <div key={shop._id} className='p-4 rounded-2xl border border-blinkit-border bg-blinkit-bg/40 flex flex-col justify-between gap-3 hover:border-blinkit-green/40 transition'>
+                        <div className='flex items-start gap-3'>
+                          <div className='w-14 h-14 rounded-xl bg-blinkit-green-soft overflow-hidden flex items-center justify-center shrink-0 border border-blinkit-border'>
+                            {shop.image ? (
+                              <img src={shop.image} alt={shop.name} className='w-full h-full object-cover' />
+                            ) : (
+                              <FaStore className='text-blinkit-green text-xl' />
+                            )}
+                          </div>
+                          <div className='flex-1 min-w-0'>
+                            <h4 className='font-bold text-blinkit-text text-sm truncate'>{shop.name}</h4>
+                            <p className='text-xs text-blinkit-text-secondary truncate'>{shop.address || shop.city} • Commission: {shop.commissionRate ?? 15}%</p>
+                            <div className='flex items-center gap-2 mt-1'>
+                              <span className={`chip text-[10px] font-bold ${shop.status === 'suspended' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'}`}>
+                                {shop.status || 'active'}
+                              </span>
+                              {shop.owner?.fullName && (
+                                <span className='text-[10px] text-blinkit-text-muted'>Owner: {shop.owner.fullName}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className='flex items-center justify-end gap-2 pt-2 border-t border-blinkit-border-light'>
+                          <button
+                            onClick={() => handleSelectShop(shop)}
+                            className='btn btn-primary !py-1.5 !px-3 text-xs flex items-center gap-1.5 cursor-pointer'
+                          >
+                            <FaUtensils size={11} />
+                            <span>Manage Menu</span>
+                          </button>
+                          <button
+                            onClick={() => handleToggleShop(shop)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                              shop.status === 'suspended' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-red-100 text-red-800 hover:bg-red-200'
+                            }`}
+                          >
+                            {shop.status === 'suspended' ? 'Activate' : 'Suspend'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </>
+            ) : (
+              /* Selected Restaurant Menu Management */
+              <div>
+                <div className='flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-blinkit-border-light mb-5 gap-3'>
                   <div className='flex items-center gap-3'>
-                    <div className='w-12 h-12 rounded-xl bg-blinkit-green-soft overflow-hidden flex items-center justify-center shrink-0'>
-                      {shop.image ? (
-                        <img src={shop.image} alt={shop.name} className='w-full h-full object-cover' />
-                      ) : (
-                        <FaStore className='text-blinkit-green' />
-                      )}
-                    </div>
+                    <button
+                      onClick={() => setSelectedShop(null)}
+                      className='p-2 rounded-xl bg-blinkit-bg hover:bg-blinkit-green-soft text-blinkit-text transition cursor-pointer border border-blinkit-border'
+                      title='Back to all restaurants'
+                    >
+                      <FaArrowLeft size={14} />
+                    </button>
                     <div>
-                      <h4 className='font-bold text-blinkit-text text-sm'>{shop.name}</h4>
-                      <p className='text-xs text-blinkit-text-secondary'>{shop.city} • Commission: {shop.commissionRate ?? 15}%</p>
-                      <span className={`chip mt-1 text-[10px] font-bold ${shop.status === 'suspended' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'}`}>
-                        {shop.status || 'active'}
-                      </span>
+                      <h3 className='font-display text-lg font-bold text-blinkit-text flex items-center gap-2'>
+                        <span>{selectedShop.name}</span>
+                        <span className={`chip text-[10px] font-bold ${selectedShop.status === 'suspended' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'}`}>
+                          {selectedShop.status || 'active'}
+                        </span>
+                      </h3>
+                      <p className='text-xs text-blinkit-text-muted'>
+                        {selectedShop.city} • Commission: {selectedShop.commissionRate ?? 15}% • {menuItems.length} items
+                      </p>
                     </div>
                   </div>
 
-                  <div className='flex items-center gap-1.5'>
+                  <div className='flex items-center gap-2'>
                     <button
-                      onClick={() => handleToggleShop(shop)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
-                        shop.status === 'suspended' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                      }`}
+                      onClick={() => setShowAddModal(true)}
+                      className='btn btn-primary !py-2 !px-4 text-xs flex items-center gap-1.5 cursor-pointer shadow-sm'
                     >
-                      {shop.status === 'suspended' ? 'Activate' : 'Suspend'}
+                      <FaPlus size={12} />
+                      <span>Add Menu Item</span>
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {loadingMenu ? (
+                  <div className='py-16 text-center text-xs text-blinkit-text-muted'>
+                    <FaRotateRight className='animate-spin mx-auto text-xl mb-2 text-blinkit-green' />
+                    <span>Loading restaurant menu...</span>
+                  </div>
+                ) : menuItems.length === 0 ? (
+                  <div className='py-12 text-center text-xs text-blinkit-text-muted bg-blinkit-bg rounded-2xl border border-blinkit-border p-6'>
+                    <FaUtensils className='mx-auto text-3xl mb-2 text-blinkit-text-muted/40' />
+                    <p className='font-bold text-blinkit-text text-sm mb-1'>No food items in this menu yet</p>
+                    <p className='mb-4'>Add menu items directly so customers can order from this restaurant.</p>
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className='btn btn-primary !py-2 !px-4 text-xs inline-flex items-center gap-1.5 cursor-pointer'
+                    >
+                      <FaPlus size={11} />
+                      <span>Add First Item</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                    {menuItems.map(item => (
+                      <div
+                        key={item._id}
+                        className='p-4 rounded-2xl border border-blinkit-border bg-blinkit-bg/40 flex flex-col justify-between gap-3 hover:border-blinkit-green/40 transition'
+                      >
+                        <div className='flex items-start gap-3'>
+                          <div className='w-16 h-16 rounded-xl bg-white overflow-hidden flex items-center justify-center shrink-0 border border-blinkit-border'>
+                            {item.image ? (
+                              <img src={item.image} alt={item.name} className='w-full h-full object-cover' />
+                            ) : (
+                              <FaUtensils className='text-blinkit-text-muted' />
+                            )}
+                          </div>
+                          <div className='flex-1 min-w-0'>
+                            <div className='flex items-center gap-1.5 mb-1'>
+                              {/* Veg / Non-Veg Indicator */}
+                              <span
+                                className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${
+                                  item.foodType === 'veg' ? 'border-emerald-600' : 'border-red-600'
+                                }`}
+                                title={item.foodType === 'veg' ? 'Vegetarian' : 'Non-Vegetarian'}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    item.foodType === 'veg' ? 'bg-emerald-600' : 'bg-red-600'
+                                  }`}
+                                />
+                              </span>
+                              <h4 className='font-bold text-blinkit-text text-sm truncate'>{item.name}</h4>
+                            </div>
+                            <span className='chip text-[10px] bg-white border border-blinkit-border text-blinkit-text-secondary'>
+                              {item.category || 'General'}
+                            </span>
+                            <p className='font-display font-bold text-blinkit-green text-sm mt-1'>
+                              ₹{item.price}
+                            </p>
+                            {item.description && (
+                              <p className='text-[11px] text-blinkit-text-muted line-clamp-2 mt-1'>
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Item Moderation Controls */}
+                        <div className='pt-2 border-t border-blinkit-border-light flex items-center justify-between gap-2 text-xs'>
+                          <div className='flex items-center gap-1.5'>
+                            {/* Stock Toggle */}
+                            <button
+                              onClick={() => handleToggleItemAvailable(item._id, item.isAvailable)}
+                              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                                item.isAvailable !== false
+                                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                  : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                              }`}
+                              title='Toggle stock availability'
+                            >
+                              {item.isAvailable !== false ? 'In Stock' : 'Out of Stock'}
+                            </button>
+
+                            {/* Approval Toggle */}
+                            <button
+                              onClick={() => handleToggleItemApproved(item._id, item.isApproved !== false)}
+                              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer ${
+                                item.isApproved !== false
+                                  ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                              }`}
+                              title='Toggle admin approval'
+                            >
+                              {item.isApproved !== false ? 'Approved' : 'Hidden'}
+                            </button>
+                          </div>
+
+                          {/* Delete Item */}
+                          <button
+                            onClick={() => handleDeleteItem(item._id)}
+                            className='p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition cursor-pointer'
+                            title='Delete Menu Item'
+                          >
+                            <FaTrash size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Add Menu Item Modal */}
+            {showAddModal && selectedShop && (
+              <div className='fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4'>
+                <div className='bg-white rounded-3xl p-6 w-full max-w-lg border border-blinkit-border shadow-2xl animate-fade-up max-h-[90vh] overflow-y-auto'>
+                  <div className='flex items-center justify-between pb-3 border-b border-blinkit-border-light mb-4'>
+                    <div>
+                      <h4 className='font-display font-bold text-base text-blinkit-text'>Add Menu Item</h4>
+                      <p className='text-xs text-blinkit-text-muted'>Add new item to {selectedShop.name}</p>
+                    </div>
+                    <button
+                      onClick={() => setShowAddModal(false)}
+                      className='p-1.5 rounded-xl hover:bg-blinkit-bg text-blinkit-text-muted cursor-pointer'
+                    >
+                      <FaXmark size={16} />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleAddItem} className='space-y-3.5 text-xs'>
+                    <div>
+                      <label className='block font-bold text-blinkit-text mb-1'>Item Name *</label>
+                      <input
+                        type='text'
+                        required
+                        placeholder='e.g., Paneer Butter Masala'
+                        value={newItemForm.name}
+                        onChange={e => setNewItemForm({ ...newItemForm, name: e.target.value })}
+                        className='w-full p-2.5 rounded-xl border border-blinkit-border bg-blinkit-bg font-medium text-xs outline-0 focus:border-blinkit-green'
+                      />
+                    </div>
+
+                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                      <div>
+                        <label className='block font-bold text-blinkit-text mb-1'>Category *</label>
+                        <select
+                          value={newItemForm.category}
+                          onChange={e => setNewItemForm({ ...newItemForm, category: e.target.value })}
+                          className='w-full p-2.5 rounded-xl border border-blinkit-border bg-blinkit-bg font-medium text-xs outline-0 focus:border-blinkit-green'
+                        >
+                          {categories
+                            .filter(c => c.category !== 'All')
+                            .map(c => (
+                              <option key={c.category} value={c.category}>
+                                {c.category}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className='block font-bold text-blinkit-text mb-1'>Price (₹) *</label>
+                        <input
+                          type='number'
+                          required
+                          min='1'
+                          placeholder='e.g., 220'
+                          value={newItemForm.price}
+                          onChange={e => setNewItemForm({ ...newItemForm, price: e.target.value })}
+                          className='w-full p-2.5 rounded-xl border border-blinkit-border bg-blinkit-bg font-medium text-xs outline-0 focus:border-blinkit-green'
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className='block font-bold text-blinkit-text mb-1'>Food Type *</label>
+                      <div className='flex items-center gap-4 pt-1'>
+                        <label className='flex items-center gap-2 cursor-pointer font-semibold'>
+                          <input
+                            type='radio'
+                            name='foodType'
+                            value='veg'
+                            checked={newItemForm.foodType === 'veg'}
+                            onChange={() => setNewItemForm({ ...newItemForm, foodType: 'veg' })}
+                            className='accent-emerald-600'
+                          />
+                          <span className='text-emerald-700 font-bold'>Vegetarian</span>
+                        </label>
+                        <label className='flex items-center gap-2 cursor-pointer font-semibold'>
+                          <input
+                            type='radio'
+                            name='foodType'
+                            value='non_veg'
+                            checked={newItemForm.foodType === 'non_veg'}
+                            onChange={() => setNewItemForm({ ...newItemForm, foodType: 'non_veg' })}
+                            className='accent-red-600'
+                          />
+                          <span className='text-red-700 font-bold'>Non-Vegetarian</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className='flex items-center justify-between mb-1'>
+                        <label className='block font-bold text-blinkit-text'>Description</label>
+                        <button
+                          type='button'
+                          onClick={handleGenerateAiDesc}
+                          disabled={generatingDesc}
+                          className='inline-flex items-center gap-1 text-[11px] font-bold text-blinkit-green hover:text-blinkit-green-dark transition cursor-pointer disabled:opacity-50'
+                          title='Generate description using Hungry AI'
+                        >
+                          <FaWandMagicSparkles size={11} className={generatingDesc ? 'animate-spin' : ''} />
+                          <span>{generatingDesc ? 'Generating...' : '✨ Write with AI'}</span>
+                        </button>
+                      </div>
+                      <textarea
+                        rows='2'
+                        placeholder='Brief description of ingredients or taste...'
+                        value={newItemForm.description}
+                        onChange={e => setNewItemForm({ ...newItemForm, description: e.target.value })}
+                        className='w-full p-2.5 rounded-xl border border-blinkit-border bg-blinkit-bg font-medium text-xs outline-0 focus:border-blinkit-green'
+                      />
+                    </div>
+
+                    <div>
+                      <label className='block font-bold text-blinkit-text mb-1'>Item Image (Optional)</label>
+                      <input
+                        type='file'
+                        accept='image/*'
+                        onChange={e => setNewItemForm({ ...newItemForm, image: e.target.files[0] })}
+                        className='w-full text-xs text-blinkit-text-secondary file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blinkit-green-soft file:text-blinkit-green-dark hover:file:bg-blinkit-green/20 cursor-pointer'
+                      />
+                    </div>
+
+                    <div className='flex items-center justify-end gap-2 pt-3 border-t border-blinkit-border-light'>
+                      <button
+                        type='button'
+                        onClick={() => setShowAddModal(false)}
+                        className='px-4 py-2 rounded-xl text-xs font-semibold text-blinkit-text-secondary hover:bg-blinkit-bg transition cursor-pointer'
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type='submit'
+                        disabled={addingItem}
+                        className='btn btn-primary !py-2 !px-5 text-xs cursor-pointer'
+                      >
+                        {addingItem ? 'Adding Item...' : 'Add Item'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

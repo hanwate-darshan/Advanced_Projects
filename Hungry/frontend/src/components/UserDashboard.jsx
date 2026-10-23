@@ -68,13 +68,21 @@ function Hero() {
               Discover delicious meals from your favorite restaurants and get them delivered to your doorstep.
             </p>
             <div className='flex flex-wrap items-center gap-3 mt-7'>
-              <button className='btn bg-white !text-blinkit-text !px-6 !py-3 text-sm font-bold shadow-card hover:shadow-lift' onClick={() => document.getElementById("popular-food")?.scrollIntoView({ behavior: "smooth" })}>
+              <button className='btn bg-white !text-blinkit-text !px-6 !py-3 text-sm font-bold shadow-card hover:shadow-lift cursor-pointer' onClick={() => document.getElementById("popular-food")?.scrollIntoView({ behavior: "smooth" })}>
                 <FaBurger size={15} className='text-blinkit-green' />
                 Explore Food
               </button>
-              <button className='btn bg-white/10 backdrop-blur ring-1 ring-white/25 !px-6 !py-3 text-sm font-semibold hover:bg-white/20' onClick={() => document.getElementById("popular-shops")?.scrollIntoView({ behavior: "smooth" })}>
+              <button className='btn bg-white/10 backdrop-blur ring-1 ring-white/25 !px-6 !py-3 text-sm font-semibold hover:bg-white/20 cursor-pointer' onClick={() => document.getElementById("popular-shops")?.scrollIntoView({ behavior: "smooth" })}>
                 <FaStore size={15} />
                 View Restaurants
+              </button>
+              <button
+                type='button'
+                className='btn bg-gradient-to-r from-amber-400 to-amber-500 !text-zinc-950 !px-5 !py-3 text-sm font-extrabold shadow-glow-amber hover:scale-105 active:scale-95 transition-all cursor-pointer'
+                onClick={() => window.dispatchEvent(new CustomEvent('open-hungry-ai'))}
+              >
+                <FaWandMagicSparkles size={14} className='animate-pulse' />
+                <span>Ask Hungry AI</span>
               </button>
             </div>
           </div>

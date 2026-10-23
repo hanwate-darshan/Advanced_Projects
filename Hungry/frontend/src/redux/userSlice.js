@@ -71,6 +71,11 @@ const userSlice = createSlice({
       state.totalAmount = state.cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0)
     },
 
+    clearCart: (state) => {
+      state.cartItems = []
+      state.totalAmount = 0
+    },
+
     setMyOrders: (state, action) => {
       state.myOrders = action.payload || []
     },
@@ -89,38 +94,50 @@ const userSlice = createSlice({
     },
 
     updateOrderStatus: (state, action) => {
-      const { orderId, shopId, status } = action.payload
+      const { orderId, shopId, status, shopOrderId } = action.payload
       const order = state.myOrders?.find(o => String(o._id) === String(orderId))
       if (!order) return
 
       if (Array.isArray(order.shopOrders)) {
-        const shopOrder = order.shopOrders.find(so => String(so.shop?._id || so.shop) === String(shopId))
+        let shopOrder = null
+        if (shopOrderId) {
+          shopOrder = order.shopOrders.find(so => String(so._id) === String(shopOrderId))
+        }
+        if (!shopOrder && shopId) {
+          shopOrder = order.shopOrders.find(so => String(so.shop?._id || so.shop) === String(shopId))
+        }
+        if (!shopOrder && order.shopOrders.length === 1) {
+          shopOrder = order.shopOrders[0]
+        }
         if (shopOrder) {
           shopOrder.status = status
         }
       } else if (order.shopOrders) {
-        const currentShopId = order.shopOrders.shop?._id || order.shopOrders.shop
-        if (!shopId || String(currentShopId) === String(shopId)) {
-          order.shopOrders.status = status
-        }
+        order.shopOrders.status = status
       }
     },
 
     updateRealtimeOrderStatus: (state, action) => {
-      const { orderId, shopId, status } = action.payload
+      const { orderId, shopId, status, shopOrderId } = action.payload
       const order = state.myOrders?.find(o => String(o._id) === String(orderId))
       if (!order) return
 
       if (Array.isArray(order.shopOrders)) {
-        const shopOrder = order.shopOrders.find(so => String(so.shop?._id || so.shop) === String(shopId))
+        let shopOrder = null
+        if (shopOrderId) {
+          shopOrder = order.shopOrders.find(so => String(so._id) === String(shopOrderId))
+        }
+        if (!shopOrder && shopId) {
+          shopOrder = order.shopOrders.find(so => String(so.shop?._id || so.shop) === String(shopId))
+        }
+        if (!shopOrder && order.shopOrders.length === 1) {
+          shopOrder = order.shopOrders[0]
+        }
         if (shopOrder) {
           shopOrder.status = status
         }
       } else if (order.shopOrders) {
-        const currentShopId = order.shopOrders.shop?._id || order.shopOrders.shop
-        if (!shopId || String(currentShopId) === String(shopId)) {
-          order.shopOrders.status = status
-        }
+        order.shopOrders.status = status
       }
     },
 
@@ -133,5 +150,5 @@ const userSlice = createSlice({
   }
 })
 
-export const { setUserData, setCurrentAddress, setCurrentCity, setCurrentState, setShopsInMyCity, setItemsInMyCity, addToCart, updateQuantity, removeCartItem, setMyOrders, addMyOrder, updateOrderStatus, setSearchItems, setTotalAmount, setSocket ,updateRealtimeOrderStatus, setRecommendedItems } = userSlice.actions
+export const { setUserData, setCurrentAddress, setCurrentCity, setCurrentState, setShopsInMyCity, setItemsInMyCity, addToCart, updateQuantity, removeCartItem, clearCart, setMyOrders, addMyOrder, updateOrderStatus, setSearchItems, setTotalAmount, setSocket ,updateRealtimeOrderStatus, setRecommendedItems } = userSlice.actions
 export default userSlice.reducer

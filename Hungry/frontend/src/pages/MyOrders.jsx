@@ -41,9 +41,15 @@ function MyOrders() {
       }
     }
 
-    const handleUpdateStatus = ({ orderId, shopId, status, userId }) => {
-      if (userData?._id && String(userId) === String(userData._id)) {
-        dispatch(updateRealtimeOrderStatus({ orderId, shopId, status }))
+    const handleUpdateStatus = async ({ orderId, shopId, status, userId, shopOrderId }) => {
+      dispatch(updateRealtimeOrderStatus({ orderId, shopId, status, shopOrderId }))
+      try {
+        const result = await axios.get(`${serverUrl}/api/order/my-orders`, { withCredentials: true })
+        if (result.data) {
+          dispatch(setMyOrders(result.data))
+        }
+      } catch (e) {
+        console.log("Error refreshing my-orders:", e)
       }
     }
 

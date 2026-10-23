@@ -13,7 +13,7 @@ import axios from 'axios';
 import { FaLock, FaCircleCheck } from "react-icons/fa6";
 import { useNavigate } from 'react-router-dom';
 import { serverUrl } from '../App';
-import { addMyOrder } from '../redux/userSlice';
+import { addMyOrder, clearCart } from '../redux/userSlice';
 import { ClipLoader } from 'react-spinners';
 
 function RecenterMap({ location }) {
@@ -95,6 +95,7 @@ function CheckOut() {
 
       if (paymentMethod == "cod") {
         dispatch(addMyOrder(result.data))
+        dispatch(clearCart())
         navigate("/order-placed", { state: { orderId: result.data._id } })
       } else {
         const orderId = result.data.orderId
@@ -124,6 +125,7 @@ const openRazorpayWindow = (orderId, razorOrder) => {
       orderId
     }, { withCredentials: true })
     dispatch(addMyOrder(result.data))
+    dispatch(clearCart())
     navigate("/order-placed", { state: { orderId: result.data?._id || orderId } })
    } catch (error) {
     console.log(error)

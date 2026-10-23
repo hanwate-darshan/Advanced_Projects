@@ -12,6 +12,7 @@ import Coupon from "../models/coupon.model.js";
 import AdminNotification from "../models/adminNotification.model.js";
 import PlatformSetting from "../models/platformSetting.model.js";
 import { aiChat } from "../utils/ai.js";
+import uploadOnCloudinary from "../utils/cloudinary.js";
 
 // Helper: Log Admin Activity
 const logActivity = async (adminId, action, targetType, targetId, description, req) => {
@@ -692,7 +693,16 @@ export const getOwners = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: enriched,
+      data: {
+        owners: enriched,
+        pagination: {
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          totalPages: Math.ceil(total / Number(limit))
+        }
+      },
+      owners: enriched,
       pagination: {
         total,
         page: Number(page),
@@ -741,7 +751,8 @@ export const getOwnerById = async (req, res) => {
 export const updateOwnerApproval = async (req, res) => {
   try {
     const { id } = req.params;
-    const { approvalStatus, reason = "" } = req.body;
+    const approvalStatus = req.body.approvalStatus || req.body.action;
+    const reason = req.body.reason || "";
 
     if (!["approved", "rejected", "pending"].includes(approvalStatus)) {
       return res.status(400).json({ success: false, message: "Invalid approval status" });
@@ -827,7 +838,16 @@ export const getRestaurants = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: shops,
+      data: {
+        restaurants: shops,
+        pagination: {
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          totalPages: Math.ceil(total / Number(limit))
+        }
+      },
+      restaurants: shops,
       pagination: {
         total,
         page: Number(page),
@@ -865,6 +885,98 @@ export const getRestaurantById = async (req, res) => {
         orders
       }
     });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getRestaurantItems = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const items = await Item.find({ shop: id }).sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, data: items, items });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const addRestaurantItem = async (req, res) => {
+  try {
+    const { id } = req.params; // shopId
+    const { name, category, price, foodType, description } = req.body;
+    let image = req.body.image || "";
+    if (req.file) {
+      image = await uploadOnCloudinary(req.file.path);
+    }
+
+    if (!name || !category || !price) {
+      return res.status(400).json({ success: false, message: "Name, category, and price are required" });
+    }
+
+    const item = await Item.create({
+      name,
+      category,
+      price: Number(price),
+      foodType: foodType || "veg",
+      description: description || "",
+      image: image || "",
+      shop: id,
+      isAvailable: true,
+      isApproved: true
+    });
+
+    const shop = await Shop.findById(id);
+    if (shop) {
+      shop.items.push(item._id);
+      await shop.save();
+    }
+
+    await logActivity(
+      req.userId,
+      "ITEM_CREATED",
+      "Item",
+      item._id,
+      `Admin added item ${item.name} to shop ${shop?.name || id}`,
+      req
+    );
+
+    return res.status(201).json({ success: true, message: "Item added successfully", data: item });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteRestaurantItem = async (req, res) => {
+  try {
+    const { id } = req.params; // itemId
+    const item = await Item.findByIdAndDelete(id);
+    if (!item) return res.status(404).json({ success: false, message: "Item not found" });
+
+    await Shop.findByIdAndUpdate(item.shop, { $pull: { items: item._id } });
+
+    await logActivity(
+      req.userId,
+      "ITEM_DELETED",
+      "Item",
+      id,
+      `Admin deleted item ${item.name}`,
+      req
+    );
+
+    return res.status(200).json({ success: true, message: "Item deleted successfully" });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateRestaurantCommission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { commissionRate } = req.body;
+    const shop = await Shop.findByIdAndUpdate(id, { commissionRate: Number(commissionRate) }, { new: true });
+    if (!shop) return res.status(404).json({ success: false, message: "Restaurant not found" });
+
+    return res.status(200).json({ success: true, message: "Commission updated", data: shop });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -968,7 +1080,16 @@ export const getRiders = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: enriched,
+      data: {
+        riders: enriched,
+        pagination: {
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          totalPages: Math.ceil(total / Number(limit))
+        }
+      },
+      riders: enriched,
       pagination: {
         total,
         page: Number(page),
@@ -1014,7 +1135,12 @@ export const getRiderById = async (req, res) => {
 export const updateRiderApproval = async (req, res) => {
   try {
     const { id } = req.params;
-    const { approvalStatus, reason = "" } = req.body;
+    const approvalStatus = req.body.approvalStatus || req.body.action;
+    const reason = req.body.reason || "";
+
+    if (!["approved", "rejected", "pending"].includes(approvalStatus)) {
+      return res.status(400).json({ success: false, message: "Invalid approval status" });
+    }
 
     const rider = await User.findByIdAndUpdate(id, { approvalStatus }, { new: true }).select("-password");
     if (!rider) return res.status(404).json({ success: false, message: "Rider not found" });
@@ -1029,6 +1155,37 @@ export const updateRiderApproval = async (req, res) => {
     );
 
     return res.status(200).json({ success: true, message: `Rider approval updated to ${approvalStatus}`, data: rider });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const toggleUserBlock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { block } = req.body;
+    const accountStatus = block ? "blocked" : "active";
+    const user = await User.findByIdAndUpdate(
+      id,
+      {
+        accountStatus,
+        blockedAt: block ? new Date() : null,
+        blockedBy: block ? req.userId : null
+      },
+      { new: true }
+    ).select("-password");
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    await logActivity(
+      req.userId,
+      `USER_${accountStatus.toUpperCase()}`,
+      "User",
+      id,
+      `User ${user.fullName} status set to ${accountStatus}`,
+      req
+    );
+
+    return res.status(200).json({ success: true, message: `User status set to ${accountStatus}`, data: user });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

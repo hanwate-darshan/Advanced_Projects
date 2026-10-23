@@ -94,21 +94,32 @@ export const getItemByCity = async (req, res) => {
     try {
         const { city } = req.params
         if (!city) {
-            return res.status(400).json({ message: "city is required" })
+            return res.status(200).json([])
         }
-        const shops = await Shop.find({
-            city: { $regex: new RegExp(`^${city}$`, "i") }
-        }).populate('items')
-        if (!shops) {
-            return res.status(400).json({ message: "shops not found" })
-        }
-        const shopIds=shops.map((shop)=>shop._id)
 
-        const items=await Item.find({shop:{$in:shopIds}})
-        return res.status(200).json(items)
+        const cleanCity = decodeURIComponent(city).trim()
+        const escapedCity = cleanCity.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
+
+        let shops = await Shop.find({
+            city: { $regex: new RegExp(`^${escapedCity}$`, "i") }
+        }).populate('items')
+
+        if (!shops || shops.length === 0) {
+            const firstWord = cleanCity.split(" ")[0].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
+            if (firstWord) {
+                shops = await Shop.find({
+                    city: { $regex: new RegExp(firstWord, "i") }
+                }).populate('items')
+            }
+        }
+
+        const shopIds = (shops || []).map((shop) => shop._id)
+        const items = await Item.find({ shop: { $in: shopIds } })
+        return res.status(200).json(items || [])
 
     } catch (error) {
- return res.status(500).json({ message: `get item by city error ${error}` })
+        console.error("getItemByCity error:", error)
+        return res.status(500).json({ message: `get item by city error ${error}` })
     }
 }
 

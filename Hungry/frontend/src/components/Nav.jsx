@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { FaLocationDot, FaPlus } from "react-icons/fa6";
+import { FaLocationDot, FaPlus, FaWandMagicSparkles } from "react-icons/fa6";
 import { IoIosSearch } from "react-icons/io";
 import { FiShoppingCart } from "react-icons/fi";
 import { useDispatch, useSelector } from 'react-redux';
@@ -44,12 +44,12 @@ function Nav() {
   const navigate = useNavigate()
 
   const pendingOrdersCount = myOrders?.filter(order => {
-    const status = order?.shopOrders?.status
+    const status = (order?.shopOrders?.status || "").toLowerCase().trim()
     return status === "pending"
   })?.length || 0
 
   const activeOrdersCount = myOrders?.filter(order => {
-    const status = order?.shopOrders?.status
+    const status = (order?.shopOrders?.status || "").toLowerCase().trim()
     return status && status !== "delivered"
   })?.length || 0
 
@@ -57,9 +57,13 @@ function Nav() {
 
   const userActiveOrdersCount = myOrders?.filter(order => {
     if (Array.isArray(order?.shopOrders)) {
-      return order.shopOrders.some(so => so.status && so.status !== "delivered")
+      return order.shopOrders.some(so => {
+        const s = (so.status || "").toLowerCase().trim()
+        return s && s !== "delivered"
+      })
     }
-    return order?.shopOrders?.status && order.shopOrders.status !== "delivered"
+    const singleStatus = (order?.shopOrders?.status || "").toLowerCase().trim()
+    return singleStatus && singleStatus !== "delivered"
   })?.length || 0
 
   const handleLogOut = async () => {
@@ -163,6 +167,17 @@ function Nav() {
           ) : (
             <>
               {userData.role == "user" && (
+                <button
+                  type="button"
+                  className='relative hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-blinkit-green-soft text-blinkit-green border border-blinkit-green/20 text-xs font-bold transition-all duration-200 hover:bg-blinkit-green hover:text-white cursor-pointer hover:shadow-soft'
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-hungry-ai'))}
+                  title='Ask Hungry AI Assistant'
+                >
+                  <FaWandMagicSparkles size={12} className='text-blinkit-yellow-dark hover:text-white' />
+                  <span>Ask AI</span>
+                </button>
+              )}
+              {userData.role == "user" && (
                 <button className='relative w-11 h-11 rounded-full grid place-items-center bg-white border border-blinkit-border cursor-pointer transition-all duration-200 hover:border-blinkit-green/40 hover:shadow-soft' onClick={() => navigate("/cart")} aria-label={`Cart with ${cartItems.length} items`}>
                   <FiShoppingCart size={20} className='text-blinkit-text-secondary' />
                   {cartItems.length > 0 && (
@@ -170,25 +185,30 @@ function Nav() {
                   )}
                 </button>
               )}
-              <button
-                className='relative hidden md:inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-blinkit-border text-blinkit-text-secondary text-sm font-semibold transition-all duration-200 hover:text-blinkit-text hover:shadow-soft cursor-pointer'
-                onClick={() => navigate("/my-orders")}
-              >
-                <TbReceipt2 size={18} />
-                <span>My Orders</span>
-                {userActiveOrdersCount > 0 && (
-                  <span className='ml-0.5 inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 text-white bg-blinkit-green text-[11px] font-extrabold rounded-full shadow-soft ring-2 ring-green-100'>
-                    {userActiveOrdersCount}
-                  </span>
-                )}
-              </button>
+              {userData.role == "user" && (
+                <button
+                  className='relative hidden md:inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-blinkit-border text-blinkit-text-secondary text-sm font-semibold transition-all duration-200 hover:text-blinkit-text hover:shadow-soft cursor-pointer'
+                  onClick={() => navigate("/my-orders")}
+                >
+                  <TbReceipt2 size={18} />
+                  <span>My Orders</span>
+                  {userActiveOrdersCount > 0 && (
+                    <span className='ml-0.5 inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 text-white bg-blinkit-green text-[11px] font-extrabold rounded-full shadow-soft ring-2 ring-green-100'>
+                      {userActiveOrdersCount}
+                    </span>
+                  )}
+                </button>
+              )}
             </>
           )}
 
           {userData.role == "admin" && (
-            <span className='chip bg-blinkit-green-soft text-blinkit-green-dark font-extrabold text-xs shadow-soft'>
-              Operations Admin
-            </span>
+            <button
+              onClick={() => navigate("/admin")}
+              className='hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-blinkit-green-soft text-blinkit-green-dark hover:bg-blinkit-green hover:text-white font-extrabold text-xs shadow-soft transition-all duration-200 cursor-pointer'
+            >
+              <span>Admin Console</span>
+            </button>
           )}
 
           <button
@@ -240,6 +260,15 @@ function Nav() {
                     {ownerBadgeCount}
                   </span>
                 )}
+              </div>
+            )}
+            {userData.role == "admin" && (
+              <div className='flex items-center justify-between px-3 py-2.5 rounded-xl text-blinkit-text font-semibold cursor-pointer text-sm transition-all duration-150 hover:bg-blinkit-green-soft hover:text-blinkit-green-dark'
+                onClick={() => navigate("/admin")}>
+                <div className='flex items-center gap-2'>
+                  <TbReceipt2 size={16} />
+                  <span>Admin Console</span>
+                </div>
               </div>
             )}
             <button className='flex items-center gap-2 px-3 py-2.5 rounded-xl text-red-500 font-semibold cursor-pointer text-sm transition-all duration-150 hover:bg-red-50' onClick={handleLogOut}>

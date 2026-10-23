@@ -22,6 +22,7 @@ import useGetRecommendations from './hooks/useGetRecommendations'
 import useUpdateLocation from './hooks/useUpdateLocation'
 import TrackOrderPage from './pages/TrackOrderPage'
 import Shop from './pages/Shop'
+import AiFoodAssistant from './components/AiFoodAssistant'
 import { useEffect, useState } from 'react'
 import { io } from 'socket.io-client'
 import { setSocket, addMyOrder, updateRealtimeOrderStatus } from './redux/userSlice'
@@ -126,9 +127,17 @@ function App() {
       }
     }
 
-    const handleUpdateStatus = ({ orderId, shopId, status, userId }) => {
-      console.log("Global realtime update-status received:", { orderId, shopId, status, userId })
-      dispatch(updateRealtimeOrderStatus({ orderId, shopId, status }))
+    const handleUpdateStatus = async ({ orderId, shopId, status, userId, shopOrderId }) => {
+      console.log("Global realtime update-status received:", { orderId, shopId, status, userId, shopOrderId })
+      dispatch(updateRealtimeOrderStatus({ orderId, shopId, status, shopOrderId }))
+      try {
+        const result = await axios.get(`${serverUrl}/api/order/my-orders`, { withCredentials: true })
+        if (result.data) {
+          dispatch(setMyOrders(result.data))
+        }
+      } catch (err) {
+        console.log("Error syncing myOrders on update-status:", err)
+      }
     }
 
     socketInstance.on('newOrder', handleNewOrder)
@@ -213,6 +222,7 @@ function App() {
         <Route path='/track-order/:orderId' element={userData?<TrackOrderPage/>:<Navigate to={"/signin"}/>}/>
         <Route path='/shop/:shopId' element={userData?<Shop/>:<Navigate to={"/signin"}/>}/>
       </Routes>
+      <AiFoodAssistant />
     </>
   )
 }

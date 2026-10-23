@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FaMinus, FaPlus } from "react-icons/fa6";
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../redux/userSlice';
@@ -10,11 +10,20 @@ function FoodCard({ data, index = 0, reason = null }) {
   const dispatch = useDispatch()
   const { cartItems } = useSelector(state => state.user)
 
+  const cartItem = cartItems.find(i => i.id == data._id)
+  const inCart = Boolean(cartItem)
+  const shopId = data.shop?._id || data.shop
+
+  useEffect(() => {
+    if (!inCart) {
+      setQuantity(0)
+    } else if (cartItem?.quantity) {
+      setQuantity(cartItem.quantity)
+    }
+  }, [inCart, cartItem?.quantity])
+
   const handleIncrease = () => setQuantity(quantity + 1)
   const handleDecrease = () => { if (quantity > 0) setQuantity(quantity - 1) }
-
-  const inCart = cartItems.some(i => i.id == data._id)
-  const shopId = data.shop?._id || data.shop
 
   return (
     <div

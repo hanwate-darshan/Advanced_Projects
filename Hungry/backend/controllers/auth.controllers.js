@@ -17,12 +17,14 @@ export const signUp=async (req,res) => {
         }
      
         const hashedPassword=await bcrypt.hash(password,10)
+        const defaultApproval = (role === "owner" || role === "deliveryBoy") ? "pending" : "approved"
         user=await User.create({
             fullName,
             email,
             role,
             mobile,
-            password:hashedPassword
+            password:hashedPassword,
+            approvalStatus: defaultApproval
         })
 
         const token=await genToken(user._id)

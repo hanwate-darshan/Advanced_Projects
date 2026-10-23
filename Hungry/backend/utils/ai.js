@@ -1,15 +1,26 @@
 import axios from "axios"
 
-const endpoint = process.env.HF_ENDPOINT
-const model = process.env.HF_MODEL
-const apiKey = process.env.HF_API_KEY
+export const getAiConfig = () => {
+  const endpoint = process.env.HF_ENDPOINT;
+  const model = process.env.HF_MODEL;
+  const apiKey = process.env.HF_API_KEY;
+  const isConfigured = Boolean(
+    endpoint &&
+    model &&
+    apiKey &&
+    apiKey.trim() !== "" &&
+    apiKey.toLowerCase() !== "none"
+  );
+  return { endpoint, model, apiKey, isConfigured };
+};
 
-export const isAiEnabled = Boolean(endpoint && model && apiKey)
+export const isAiEnabled = () => getAiConfig().isConfigured;
 
 export async function aiChat(messages, { maxTokens = 128, temperature = 0.6 } = {}) {
-  if (!isAiEnabled) {
-    console.log("[Hungry AI] HF not configured — skipping AI call")
-    return null
+  const { endpoint, model, apiKey, isConfigured } = getAiConfig();
+  if (!isConfigured) {
+    console.log("[Hungry AI] HF API key is 'none' or not configured — skipping AI call gracefully");
+    return null;
   }
   try {
     const url = `${endpoint.replace(/\/$/, "")}/chat/completions`

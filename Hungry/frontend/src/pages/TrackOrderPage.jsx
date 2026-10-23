@@ -67,9 +67,9 @@ function TrackOrderPage() {
         try {
             const result = await axios.get(`${serverUrl}/api/order/get-order-by-id/${orderId}`, { withCredentials: true })
             setCurrentOrder(result.data)
-            const activeOtp = result.data?.shopOrders?.find(so => so.status !== "delivered")?.deliveryOtp
+            const activeOtp = result.data?.shopOrders?.find(so => (so.status || "").toLowerCase().trim() !== "delivered")?.deliveryOtp
             if (activeOtp) setLiveOtp(activeOtp)
-            else if (result.data?.shopOrders?.every(so => so.status === "delivered")) setLiveOtp(null)
+            else if (result.data?.shopOrders?.every(so => (so.status || "").toLowerCase().trim() === "delivered")) setLiveOtp(null)
         } catch (error) {
             console.log(error)
         }
@@ -189,7 +189,7 @@ function TrackOrderPage() {
             </div>
           </div>
 
-          {((liveOtp || shopOrder.deliveryOtp) && shopOrder.status !== "delivered") && (
+          {((liveOtp || shopOrder.deliveryOtp) && (shopOrder.status || "").toLowerCase().trim() !== "delivered") && (
             <div className='bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-2 border-orange-300 rounded-2xl p-4 sm:p-5 shadow-soft animate-scale-in'>
               <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
                 <div className='flex items-center gap-3.5'>
@@ -217,7 +217,7 @@ function TrackOrderPage() {
             </div>
           )}
 
-          {shopOrder.status != "delivered" ? <>
+          {(shopOrder.status || "").toLowerCase().trim() !== "delivered" ? <>
             {shopOrder.assignedDeliveryBoy ? (
               <div className='flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-blinkit-text-secondary bg-blinkit-bg/70 p-4 rounded-xl border border-blinkit-border-light animate-fade-in'>
                 <div className='flex flex-col gap-1.5'>
@@ -248,7 +248,7 @@ function TrackOrderPage() {
             </div>
           )}
 
-          {(Boolean(shopOrder.assignedDeliveryBoy) && shopOrder.status !== "delivered") && (
+          {(Boolean(shopOrder.assignedDeliveryBoy) && (shopOrder.status || "").toLowerCase().trim() !== "delivered") && (
             <div className="h-[400px] w-full rounded-2xl overflow-hidden border border-blinkit-border-light shadow-soft">
               <DeliveryBoyTracking data={{
                 deliveryBoyLocation: (shopOrder.assignedDeliveryBoy && liveLocations[shopOrder.assignedDeliveryBoy._id]) || {

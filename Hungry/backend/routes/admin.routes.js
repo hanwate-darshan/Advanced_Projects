@@ -1,5 +1,6 @@
 import express from "express";
 import isAdmin from "../middlewares/isAdmin.js";
+import { upload } from "../middlewares/multer.js";
 import {
   adminLogin,
   adminMe,
@@ -15,12 +16,17 @@ import {
   updateOwnerStatus,
   getRestaurants,
   getRestaurantById,
+  getRestaurantItems,
+  addRestaurantItem,
+  deleteRestaurantItem,
+  updateRestaurantCommission,
   updateRestaurantStatus,
   updateItemStatus,
   getRiders,
   getRiderById,
   updateRiderApproval,
   updateRiderStatus,
+  toggleUserBlock,
   getLiveDeliveries,
   getOrders,
   getOrderById,
@@ -68,20 +74,30 @@ adminRouter.patch("/customers/:id/status", updateCustomerStatus);
 adminRouter.get("/owners", getOwners);
 adminRouter.get("/owners/:id", getOwnerById);
 adminRouter.patch("/owners/:id/approval", updateOwnerApproval);
+adminRouter.patch("/owners/:id/approve", updateOwnerApproval);
 adminRouter.patch("/owners/:id/status", updateOwnerStatus);
 
 // Restaurants & Food Moderation
 adminRouter.get("/restaurants", getRestaurants);
 adminRouter.get("/restaurants/:id", getRestaurantById);
+adminRouter.get("/restaurants/:id/items", getRestaurantItems);
+adminRouter.post("/restaurants/:id/items", upload.single("image"), addRestaurantItem);
 adminRouter.patch("/restaurants/:id/status", updateRestaurantStatus);
+adminRouter.patch("/restaurants/:id/commission", updateRestaurantCommission);
 adminRouter.patch("/items/:id/status", updateItemStatus);
+adminRouter.patch("/items/:id/moderate", updateItemStatus);
+adminRouter.delete("/items/:id", deleteRestaurantItem);
 
 // Riders & Live Fleet
 adminRouter.get("/riders", getRiders);
 adminRouter.get("/riders/:id", getRiderById);
 adminRouter.patch("/riders/:id/approval", updateRiderApproval);
+adminRouter.patch("/riders/:id/approve", updateRiderApproval);
 adminRouter.patch("/riders/:id/status", updateRiderStatus);
 adminRouter.get("/live-deliveries", getLiveDeliveries);
+
+// General User Block
+adminRouter.patch("/users/:id/block", toggleUserBlock);
 
 // Orders
 adminRouter.get("/orders", getOrders);
