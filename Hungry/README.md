@@ -252,12 +252,6 @@ PASS="your_gmail_app_password"
 HF_ENDPOINT="https://api.groq.com/openai/v1"
 HF_MODEL="qwen/qwen3.8-27b"
 HF_API_KEY="gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
-# SuperAdmin Default Credentials (auto-seeded)
-ADMIN_FULLNAME="Hungry SuperAdmin"
-ADMIN_EMAIL="admin@hungry.com"
-ADMIN_PASSWORD="admin123"
-ADMIN_MOBILE="9999999999"
 ```
 
 Create `frontend/.env`:
