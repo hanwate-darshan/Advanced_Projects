@@ -47,7 +47,8 @@ import AdminAnalytics from './admin/pages/AdminAnalytics'
 import AdminSettings from './admin/pages/AdminSettings'
 import AdminActivityLogs from './admin/pages/AdminActivityLogs'
 
-export const serverUrl="http://localhost:8000"
+export const serverUrl="https://hungry-food-delivery-app-tn6f.onrender.com"
+// for local use case : use ------>>>> http://localhost:8000
 
 const playNotificationChime = () => {
   try {
