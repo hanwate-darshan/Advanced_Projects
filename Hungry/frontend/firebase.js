@@ -7,11 +7,12 @@ import { getAuth } from "firebase/auth";
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey:import.meta.env.VITE_FIREBASE_APIKEY,
-  authDomain: "hungry-food-delivery-app-f916b.firebaseapp.com",
-  projectId: "hungry-food-delivery-app-f916b",
-  storageBucket: "hungry-food-delivery-app-f916b.firebasestorage.app",
-  messagingSenderId: "221443189772",
-  appId: "1:221443189772:web:52dadfecbe4ac996161229"
+  authDomain: "hungry-900df.firebaseapp.com",
+  projectId: "hungry-900df",
+  storageBucket: "hungry-900df.firebasestorage.app",
+  messagingSenderId: "181526392626",
+  appId: "1:181526392626:web:95258a996cd794ac2e312b"
+ 
 };
 
 // Initialize Firebase
